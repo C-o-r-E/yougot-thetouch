@@ -8,6 +8,13 @@
 
 #include <linux/input.h>
 
+typedef struct touchContact
+{
+  unsigned int id;
+  int pos_x;
+  int pos_y;
+} touch_contact;
+
 typedef struct tagevent
 {
     struct timeval time;
@@ -17,41 +24,60 @@ typedef struct tagevent
 } input_event;
 
 #define BUFFSIZE 32
-input_event evBuf[BUFFSIZE];
-unsigned int cnt = 0;
+#define MAX_CONTACTS 2
 
-void parse()
+input_event evBuf[BUFFSIZE];
+touch_contact contacts[MAX_CONTACTS];
+
+unsigned int event_count;
+unsigned int slot;
+
+
+void init_machine()
+{
+  //zero everything
+  memset(&contacts, 0, sizeof(touch_contact) * MAX_CONTACTS);
+  memset(&evBuf, 0, sizeof(input_event) * BUFFSIZE);
+
+  event_count = 0;
+  slot = 0;
+}
+
+void parse(int num_events)
 {
   unsigned int loc = 0;
-  unsigned int slot = 0;
   unsigned int id = 0;
+  int i;
 
-  switch(evBuf[loc].code)
-    {
-    case ABS_MT_SLOT:
-      slot = evBuf[loc++].value;
-      break;
-
-    case ABS_MT_TRACKING_ID:
-      id = evBuf[loc++].value;
-      break;
-
-    case ABS_MT_POSITION_X:
-      break;
-
-    case ABS_MT_POSITION_Y:
-      break;
+  for(int i=0; i<num_events; i++)
+    { 
+      switch(evBuf[loc].code)
+	{
+	case ABS_MT_SLOT:
+	  slot = evBuf[loc++].value;
+	  break;
+	  
+	case ABS_MT_TRACKING_ID:
+	  id = evBuf[loc++].value;
+	  break;
+	  
+	case ABS_MT_POSITION_X:
+	  break;
+	  
+	case ABS_MT_POSITION_Y:
+	  break;
+	}
     }
 }
 
 void handleEvent(input_event ev)
 {
-  evBuf[cnt++] = ev;
+  evBuf[event_count++] = ev;
   
   if(ev.code == SYN_REPORT)
     {
-      parse();
-      cnt = 0;
+      parse(event_count);
+      event_count = 0;
     }
   
 }
