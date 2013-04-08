@@ -17,7 +17,7 @@ typedef struct tagevent
 } input_event;
 
 #define BUFFSIZE 32
-input_event[BUFFSIZE] evBuf;
+input_event evBuf[BUFFSIZE];
 unsigned int cnt = 0;
 
 void parse()
@@ -26,7 +26,7 @@ void parse()
   unsigned int slot = 0;
   unsigned int id = 0;
 
-  switch(evBuf[loc])
+  switch(evBuf[loc].code)
     {
     case ABS_MT_SLOT:
       slot = evBuf[loc++].value;
@@ -190,7 +190,8 @@ int main( int argc, char **argv )
 	      input_event ev;
 	      if( sizeof( input_event ) == read( fd, &ev, sizeof( input_event ) ) ) 
 		{
-		  ParseEvent( ev );
+		  handleEvent(ev);
+		  //ParseEvent( ev );
                 } else 
 		{
 		  printf(" Nothing read \n" );
