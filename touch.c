@@ -49,22 +49,31 @@ void parse(int num_events)
   unsigned int id = 0;
   int i;
 
-  for(int i=0; i<num_events; i++)
+  for(i=0; i<num_events; i++)
     { 
       switch(evBuf[loc].code)
 	{
 	case ABS_MT_SLOT:
 	  slot = evBuf[loc++].value;
+	  //is the id valid?
+	  if( (slot < -1) || (slot >= MAX_CONTACTS) )
+	    {
+	      printf("Invalid slot = %d!\n", slot);
+	      break;
+	    }
 	  break;
 	  
 	case ABS_MT_TRACKING_ID:
 	  id = evBuf[loc++].value;
+	  contacts[slot].id = id;
 	  break;
 	  
 	case ABS_MT_POSITION_X:
+	  contacts[slot].pos_x = evBuf[loc++].value;
 	  break;
 	  
 	case ABS_MT_POSITION_Y:
+	  contacts[slot].pos_y = evBuf[loc++].value;
 	  break;
 	}
     }
