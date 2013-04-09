@@ -11,6 +11,7 @@
 typedef struct touchContact
 {
   unsigned int id;
+  unsigned int cnt;
   int pos_x;
   int pos_y;
 } touch_contact;
