@@ -5,6 +5,8 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <math.h>
+#include <unistd.h>
 
 #include <linux/input.h>
 
@@ -14,6 +16,8 @@ typedef struct touchContact
   unsigned int cnt;
   int pos_x;
   int pos_y;
+  int last_x;
+  int last_y;
 } touch_contact;
 
 typedef struct tagevent
@@ -31,8 +35,35 @@ input_event evBuf[BUFFSIZE];
 touch_contact contacts[MAX_CONTACTS];
 
 unsigned int event_count;
-unsigned int slot;
+int slot;
 
+
+int distance(touch_contact tc1, touch_contact tc2)
+{
+  double dist;
+  double a, b;
+
+  a = pow((double)(tc2.pos_x - tc1.last_x), 2.0);
+  b = pow((double)(tc2.pos_y - tc1.last_y), 2.0);
+
+  dist = sqrt(a + b);
+
+  return (int) dist;
+}
+
+void zoomCheck()
+{
+
+  //we must have 2 active contacts
+  if( ((contacts[0].id != -1) && (contacts[1].id != -1)) &&
+      //we need at least 2 positions recorded
+      ((contacts[0].cnt > 1) && (contacts[1].cnt > 1))
+      )
+    {
+      printf("dist = %d\n", distance(contacts[0], contacts[1]));
+    }
+
+}
 
 void init_machine()
 {
@@ -49,12 +80,21 @@ void parse(int num_events)
   unsigned int loc = 0;
   unsigned int id = 0;
   int i;
-
+  int got_pos = 0;
   for(i=0; i<num_events; i++)
     { 
       switch(evBuf[loc].code)
 	{
 	case ABS_MT_SLOT:
+	  //printf("SLOT %d\n", evBuf[loc].value);
+
+	  //if we just got some position info in the last slot
+	  if (got_pos)
+	    {
+	      contacts[slot].cnt++;
+	      got_pos = 0;
+	    }
+
 	  slot = evBuf[loc++].value;
 	  //is the id valid?
 	  if( (slot < -1) || (slot >= MAX_CONTACTS) )
@@ -62,22 +102,40 @@ void parse(int num_events)
 	      printf("Invalid slot = %d!\n", slot);
 	      break;
 	    }
+
 	  break;
 	  
 	case ABS_MT_TRACKING_ID:
+	  //printf("ID %d\n", evBuf[loc].value);
 	  id = evBuf[loc++].value;
 	  contacts[slot].id = id;
+	  contacts[slot].cnt = 0;
 	  break;
 	  
 	case ABS_MT_POSITION_X:
+	  //printf("\tx: %d\n", evBuf[loc].value);
+	  contacts[slot].last_x = contacts[slot].pos_x;
 	  contacts[slot].pos_x = evBuf[loc++].value;
+	  got_pos = 1;
 	  break;
 	  
 	case ABS_MT_POSITION_Y:
+	  //printf("\ty: %d\n", evBuf[loc].value);
+	  contacts[slot].last_y = contacts[slot].pos_y;
 	  contacts[slot].pos_y = evBuf[loc++].value;
+	  got_pos = 1;
 	  break;
 	}
     }
+
+  if (got_pos)
+    {
+      contacts[slot].cnt++;
+    }
+
+  //here we can actually checl for zoom
+  zoomCheck();
+
 }
 
 void handleEvent(input_event ev)
@@ -201,7 +259,6 @@ void ParseEvent( input_event ev )
 int main( int argc, char **argv )
 {
     int fd;
-    unsigned char byFlag = 0; /* 0: Point */
     char strPort[64] = { 0 };
     fd_set readfds;
 
